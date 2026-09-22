@@ -1,0 +1,73 @@
+@model Cart
+@{
+    ViewData["Title"] = "Your Cart";
+}
+
+<h2>Your Cart</h2>
+
+@if (!Model.CartItems.Any())
+{
+    <p class="text-muted">Your cart is empty. <a asp-controller="Home" asp-action="Index">Go shopping</a>.</p>
+}
+else
+{
+    <table class="table align-middle">
+        <thead>
+            <tr>
+                <th>Product</th>
+                <th>Price</th>
+                <th style="width:140px">Quantity</th>
+                <th>Subtotal</th>
+                <th></th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model.CartItems)
+            {
+                <tr>
+                    <td>
+                        <div class="d-flex align-items-center gap-2">
+                            <img src="@item.Product!.ImageUrl" style="width:48px;height:48px;object-fit:contain;" alt="" />
+                            <a asp-controller="Home" asp-action="Details" asp-route-id="@item.ProductId">@item.Product.Name</a>
+                        </div>
+                    </td>
+                    <td>@item.Product.Price.ToString("C")</td>
+                    <td>
+                        <form asp-controller="Cart" asp-action="UpdateQuantity" method="post" class="d-flex gap-1">
+                            <input type="hidden" name="cartItemId" value="@item.Id" />
+                            <input type="number" name="quantity" value="@item.Quantity" min="0" max="@item.Product.StockQuantity" class="form-control form-control-sm" style="width:70px" />
+                            <button type="submit" class="btn btn-sm btn-outline-secondary">Update</button>
+                        </form>
+                    </td>
+                    <td>@item.LineTotal.ToString("C")</td>
+                    <td>
+                        <form asp-controller="Cart" asp-action="Remove" method="post">
+                            <input type="hidden" name="cartItemId" value="@item.Id" />
+                            <button type="submit" class="btn btn-sm btn-outline-danger">Remove</button>
+                        </form>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+
+    <div class="row justify-content-end">
+        <div class="col-md-4">
+            <div class="card">
+                <div class="card-body">
+                    <div class="d-flex justify-content-between mb-3">
+                        <strong>Total</strong>
+                        <strong>@Model.Total.ToString("C")</strong>
+                    </div>
+                    <form asp-controller="Cart" asp-action="Checkout" method="post">
+                        <div class="mb-3">
+                            <label class="form-label">Shipping address</label>
+                            <textarea name="shippingAddress" class="form-control" rows="2" placeholder="123 Main St, City, Country" required></textarea>
+                        </div>
+                        <button type="submit" class="btn btn-success w-100">Checkout</button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+}

@@ -1,0 +1,41 @@
+@model Product
+@{
+    ViewData["Title"] = Model.Name;
+}
+
+<a asp-action="Index" class="btn btn-link px-0">&larr; Back to shop</a>
+
+<div class="row mt-3">
+    <div class="col-md-5">
+        <img src="@Model.ImageUrl" class="img-fluid border rounded p-3" alt="@Model.Name" />
+    </div>
+    <div class="col-md-7">
+        <h2>@Model.Name</h2>
+        <p class="text-muted">@Model.Category</p>
+        <h4 class="text-primary">@Model.Price.ToString("C")</h4>
+        <p>@Model.Description</p>
+
+        @if (Model.StockQuantity == 0)
+        {
+            <p class="badge bg-secondary">Out of stock</p>
+        }
+        else
+        {
+            <p class="text-success">@Model.StockQuantity in stock</p>
+
+            @if (User.Identity?.IsAuthenticated == true)
+            {
+                <form asp-controller="Cart" asp-action="AddToCart" method="post" class="d-flex align-items-center gap-2">
+                    <input type="hidden" name="productId" value="@Model.Id" />
+                    <label for="quantity" class="me-2">Qty:</label>
+                    <input type="number" id="quantity" name="quantity" value="1" min="1" max="@Model.StockQuantity" class="form-control" style="width:90px" />
+                    <button type="submit" class="btn btn-primary">Add to Cart</button>
+                </form>
+            }
+            else
+            {
+                <a asp-controller="Account" asp-action="Login" class="btn btn-primary">Log in to purchase</a>
+            }
+        }
+    </div>
+</div>

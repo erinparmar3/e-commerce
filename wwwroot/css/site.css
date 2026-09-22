@@ -1,0 +1,13 @@
+body {
+  min-height: 100vh;
+  display: flex;
+  flex-direction: column;
+}
+
+.card-img-top {
+  background-color: #f8f9fa;
+}
+
+footer {
+  margin-top: auto;
+}
