@@ -48,7 +48,7 @@ public class CartController : Controller
     // POST: /Cart/AddToCart
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> AddToCart(int productId, int quantity = 1)
+    public async Task<IActionResult> AddToCart(int productId, int quantity = 1, string? returnUrl = null)
     {
         if (quantity < 1) quantity = 1;
 
@@ -89,6 +89,11 @@ public class CartController : Controller
 
         await _context.SaveChangesAsync();
         TempData["Success"] = $"Added \"{product.Name}\" to your cart.";
+
+        // Return the user to the page they came from, or fall back to the cart.
+        if (!string.IsNullOrEmpty(returnUrl) && Url.IsLocalUrl(returnUrl))
+            return Redirect(returnUrl);
+
         return RedirectToAction("Index");
     }
 
@@ -147,10 +152,49 @@ public class CartController : Controller
         return RedirectToAction("Index");
     }
 
-    // POST: /Cart/Checkout — converts the cart into a real Order, decrements stock, clears cart.
+    // GET: /Cart/Payment — validate cart, show payment form.
+    [HttpGet]
+    public async Task<IActionResult> Payment(string shippingAddress)
+    {
+        if (string.IsNullOrWhiteSpace(shippingAddress))
+        {
+            TempData["Error"] = "Please enter a shipping address.";
+            return RedirectToAction("Index");
+        }
+
+        var userId = _userManager.GetUserId(User)!;
+        var cart = await GetOrCreateCartAsync(userId);
+
+        if (!cart.CartItems.Any())
+        {
+            TempData["Error"] = "Your cart is empty.";
+            return RedirectToAction("Index");
+        }
+
+        // Re-validate stock before showing the payment page.
+        foreach (var item in cart.CartItems)
+        {
+            if (item.Product == null || item.Quantity > item.Product.StockQuantity)
+            {
+                TempData["Error"] = $"\"{item.Product?.Name}\" no longer has enough stock. Please update your cart.";
+                return RedirectToAction("Index");
+            }
+        }
+
+        // Stash the shipping address so it survives across the POST.
+        TempData["ShippingAddress"] = shippingAddress;
+        TempData.Keep("ShippingAddress");
+
+        ViewBag.ShippingAddress = shippingAddress;
+        ViewBag.Total = cart.Total;
+        ViewBag.ItemCount = cart.CartItems.Sum(i => i.Quantity);
+        return View(cart);
+    }
+
+    // POST: /Cart/ProcessPayment — simulate payment, then place the order.
     [HttpPost]
     [ValidateAntiForgeryToken]
-    public async Task<IActionResult> Checkout(string shippingAddress)
+    public async Task<IActionResult> ProcessPayment(string shippingAddress)
     {
         var userId = _userManager.GetUserId(User)!;
         var cart = await GetOrCreateCartAsync(userId);
@@ -161,7 +205,7 @@ public class CartController : Controller
             return RedirectToAction("Index");
         }
 
-        // Re-validate stock at checkout time in case it changed since items were added.
+        // Final stock check at payment time.
         foreach (var item in cart.CartItems)
         {
             if (item.Product == null || item.Quantity > item.Product.StockQuantity)
@@ -176,7 +220,7 @@ public class CartController : Controller
             UserId = userId,
             ShippingAddress = string.IsNullOrWhiteSpace(shippingAddress) ? "Not provided" : shippingAddress,
             OrderDate = DateTime.UtcNow,
-            Status = OrderStatus.Paid, // demo: assume payment succeeds
+            Status = OrderStatus.Paid,
             TotalAmount = cart.Total
         };
 
@@ -198,7 +242,7 @@ public class CartController : Controller
 
         await _context.SaveChangesAsync();
 
-        TempData["Success"] = $"Order #{order.Id} placed successfully!";
+        TempData["Success"] = $"🎉 Payment successful! Order #{order.Id} placed.";
         return RedirectToAction("Details", "Orders", new { id = order.Id });
     }
 }

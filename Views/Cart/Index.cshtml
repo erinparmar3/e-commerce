@@ -59,12 +59,14 @@ else
                         <strong>Total</strong>
                         <strong>@Model.Total.ToString("C")</strong>
                     </div>
-                    <form asp-controller="Cart" asp-action="Checkout" method="post">
+                    <form asp-controller="Cart" asp-action="Payment" method="get">
                         <div class="mb-3">
-                            <label class="form-label">Shipping address</label>
+                            <label class="form-label fw-semibold">Shipping address</label>
                             <textarea name="shippingAddress" class="form-control" rows="2" placeholder="123 Main St, City, Country" required></textarea>
                         </div>
-                        <button type="submit" class="btn btn-success w-100">Checkout</button>
+                        <button type="submit" class="btn btn-success w-100 fw-semibold">
+                            Proceed to Payment →
+                        </button>
                     </form>
                 </div>
             </div>
