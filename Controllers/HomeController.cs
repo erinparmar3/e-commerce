@@ -1,56 +1,113 @@
-using ECommerceApp.Data;
+using ECommerceApp.Common;
+using ECommerceApp.DTOs;
+using ECommerceApp.Interfaces;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
 
 namespace ECommerceApp.Controllers;
 
 public class HomeController : Controller
 {
-    private readonly ApplicationDbContext _context;
+    private readonly IProductService _productService;
+    private readonly ICategoryService _categoryService;
+    private readonly IReviewService _reviewService;
+    private readonly IWishlistService _wishlistService;
 
-    public HomeController(ApplicationDbContext context)
+    public HomeController(
+        IProductService productService,
+        ICategoryService categoryService,
+        IReviewService reviewService,
+        IWishlistService wishlistService)
     {
-        _context = context;
+        _productService = productService;
+        _categoryService = categoryService;
+        _reviewService = reviewService;
+        _wishlistService = wishlistService;
     }
 
-    // GET: /  and /Home/Index?search=&category=
-    public async Task<IActionResult> Index(string? search, string? category)
+    [HttpGet("")]
+    [HttpGet("home/index")]
+    public async Task<IActionResult> Index([FromQuery] ProductQueryParameters query)
     {
-        var query = _context.Products.Where(p => p.IsActive).AsQueryable();
+        var products = await _productService.GetProductsAsync(query);
+        var categories = await _categoryService.GetAllCategoriesAsync(activeOnly: true);
 
-        if (!string.IsNullOrWhiteSpace(search))
+        var wishlistIds = new HashSet<int>();
+        if (User.Identity?.IsAuthenticated == true)
         {
-            query = query.Where(p => p.Name.Contains(search) || p.Description.Contains(search));
+            try
+            {
+                int userId = User.GetUserId();
+                var wishlist = await _wishlistService.GetWishlistAsync(userId);
+                wishlistIds = wishlist.Select(w => w.ProductId).ToHashSet();
+            }
+            catch { }
         }
 
-        if (!string.IsNullOrWhiteSpace(category) && category != "All")
-        {
-            query = query.Where(p => p.Category == category);
-        }
+        ViewBag.Categories = categories;
+        ViewBag.CurrentQuery = query;
+        ViewBag.WishlistIds = wishlistIds;
 
-        ViewBag.Categories = await _context.Products
-            .Select(p => p.Category)
-            .Distinct()
-            .OrderBy(c => c)
-            .ToListAsync();
-
-        ViewBag.SelectedCategory = category ?? "All";
-        ViewBag.Search = search;
-
-        var products = await query.OrderBy(p => p.Name).ToListAsync();
         return View(products);
     }
 
-    // GET: /Home/Details/5
+    [HttpGet("product/{id:int}")]
+    [HttpGet("home/details/{id:int}")]
     public async Task<IActionResult> Details(int id)
     {
-        var product = await _context.Products.FirstOrDefaultAsync(p => p.Id == id && p.IsActive);
-        if (product == null)
+        try
         {
-            return NotFound();
+            var product = await _productService.GetProductByIdAsync(id);
+            var reviews = await _reviewService.GetProductReviewsAsync(id);
+
+            bool isInWishlist = false;
+            if (User.Identity?.IsAuthenticated == true)
+            {
+                try
+                {
+                    int userId = User.GetUserId();
+                    var wishlist = await _wishlistService.GetWishlistAsync(userId);
+                    isInWishlist = wishlist.Any(w => w.ProductId == id);
+                }
+                catch { }
+            }
+
+            ViewBag.Reviews = reviews;
+            ViewBag.IsInWishlist = isInWishlist;
+            return View(product);
         }
-        return View(product);
+        catch (AppException ex)
+        {
+            TempData["Error"] = ex.Message;
+            return RedirectToAction(nameof(Index));
+        }
     }
 
-    public IActionResult Error() => View();
+    [HttpPost("product/{id:int}/review")]
+    [HttpPost("home/addreview/{id:int}")]
+    [HttpPost("home/addreview")]
+    public async Task<IActionResult> AddReview(int id, [FromForm] CreateReviewDto dto)
+    {
+        if (!User.Identity?.IsAuthenticated == true)
+        {
+            TempData["Error"] = "Please sign in to write a review.";
+            return RedirectToAction(nameof(Details), new { id });
+        }
+
+        try
+        {
+            int userId = User.GetUserId();
+            await _reviewService.CreateReviewAsync(userId, id, dto);
+            TempData["Success"] = "Thank you! Your verified review has been submitted.";
+        }
+        catch (AppException ex)
+        {
+            TempData["Error"] = ex.Message;
+        }
+        catch (Exception)
+        {
+            TempData["Error"] = "Could not submit review. Note: You can only review products you have purchased and had delivered.";
+        }
+
+        return RedirectToAction(nameof(Details), new { id });
+    }
 }
