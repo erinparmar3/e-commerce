@@ -1,38 +1,178 @@
-@model Order
+@model OrderResponseDto
 @{
-    ViewData["Title"] = $"Order #{Model.Id}";
+    ViewData["Title"] = "Order Details #" + Model.Id;
+
+    // Timeline calculation
+    int stepIndex = Model.Status switch
+    {
+        OrderStatuses.Pending => 1,
+        OrderStatuses.Confirmed => 2,
+        OrderStatuses.Shipped => 3,
+        OrderStatuses.Delivered => 4,
+        _ => 0 // Cancelled
+    };
 }
 
-<a asp-action="Index" class="btn btn-link px-0">&larr; Back to orders</a>
+<div class="container py-4">
+    <!-- Breadcrumb -->
+    <nav aria-label="breadcrumb" class="mb-4">
+        <ol class="breadcrumb small">
+            <li class="breadcrumb-item"><a href="/" class="text-decoration-none">Home</a></li>
+            <li class="breadcrumb-item"><a href="/orders" class="text-decoration-none">My Orders</a></li>
+            <li class="breadcrumb-item active" aria-current="page">Order #@Model.Id</li>
+        </ol>
+    </nav>
 
-<h2>Order #@Model.Id</h2>
-<p class="text-muted">Placed @Model.OrderDate.ToLocalTime().ToString("f") &middot; Status: <span class="badge bg-info text-dark">@Model.Status</span></p>
-<p><strong>Shipping to:</strong> @Model.ShippingAddress</p>
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4">
+        <div>
+            <h2 class="fw-bold m-0 d-flex align-items-center gap-2">
+                <span>Order #@Model.Id</span>
+                <span class="badge @(Model.Status == OrderStatuses.Delivered ? "bg-success" : Model.Status == OrderStatuses.Cancelled ? "bg-danger" : "bg-warning text-dark") fs-6">
+                    @Model.Status
+                </span>
+            </h2>
+            <p class="text-muted small m-0">Placed on @Model.CreatedAt.ToString("MMMM dd, yyyy 'at' hh:mm tt")</p>
+        </div>
 
-<table class="table">
-    <thead>
-        <tr>
-            <th>Product</th>
-            <th>Unit Price</th>
-            <th>Qty</th>
-            <th>Subtotal</th>
-        </tr>
-    </thead>
-    <tbody>
-        @foreach (var item in Model.OrderItems)
-        {
-            <tr>
-                <td>@item.ProductNameSnapshot</td>
-                <td>@item.UnitPriceSnapshot.ToString("C")</td>
-                <td>@item.Quantity</td>
-                <td>@item.LineTotal.ToString("C")</td>
-            </tr>
-        }
-    </tbody>
-    <tfoot>
-        <tr>
-            <th colspan="3" class="text-end">Total</th>
-            <th>@Model.TotalAmount.ToString("C")</th>
-        </tr>
-    </tfoot>
-</table>
+        <div class="d-flex align-items-center gap-2">
+            <button onclick="window.print()" class="btn btn-outline-secondary btn-sm rounded-pill px-3 py-2 no-print">
+                <i class="bi bi-printer me-1"></i>Print Invoice
+            </button>
+            @if (Model.Status == OrderStatuses.Pending || Model.Status == OrderStatuses.Confirmed)
+            {
+                <form asp-action="Cancel" asp-route-id="@Model.Id" method="post" onsubmit="return confirm('Are you sure you want to cancel this order? This will release reserved items back to inventory.');" class="m-0 no-print">
+                    <button type="submit" class="btn btn-outline-danger btn-sm rounded-pill px-3 py-2">
+                        <i class="bi bi-x-circle me-1"></i>Cancel Order
+                    </button>
+                </form>
+            }
+        </div>
+    </div>
+
+    <!-- Stepper Timeline (if not cancelled) -->
+    @if (Model.Status != OrderStatuses.Cancelled)
+    {
+        <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+            <h6 class="fw-bold mb-4 text-muted text-uppercase small">Tracking Timeline</h6>
+            <div class="order-stepper">
+                <div class="stepper-step @(stepIndex >= 1 ? (stepIndex > 1 ? "completed" : "active") : "")">
+                    <div class="stepper-icon"><i class="bi bi-cart-check"></i></div>
+                    <div class="stepper-label">Pending</div>
+                </div>
+                <div class="stepper-step @(stepIndex >= 2 ? (stepIndex > 2 ? "completed" : "active") : "")">
+                    <div class="stepper-icon"><i class="bi bi-check2-circle"></i></div>
+                    <div class="stepper-label">Confirmed</div>
+                </div>
+                <div class="stepper-step @(stepIndex >= 3 ? (stepIndex > 3 ? "completed" : "active") : "")">
+                    <div class="stepper-icon"><i class="bi bi-truck"></i></div>
+                    <div class="stepper-label">Shipped</div>
+                </div>
+                <div class="stepper-step @(stepIndex >= 4 ? "completed" : "")">
+                    <div class="stepper-icon"><i class="bi bi-house-check"></i></div>
+                    <div class="stepper-label">Delivered</div>
+                </div>
+            </div>
+        </div>
+    }
+    else
+    {
+        <div class="alert alert-danger rounded-4 p-4 mb-4 border-0 d-flex align-items-center gap-3">
+            <i class="bi bi-x-octagon-fill fs-2 text-danger"></i>
+            <div>
+                <h6 class="fw-bold m-0">This Order Has Been Cancelled</h6>
+                <div class="small">The order was cancelled on @Model.UpdatedAt.ToString("MMM dd, yyyy") and reserved quantities were returned to vendor stock.</div>
+            </div>
+        </div>
+    }
+
+    <div class="row g-4">
+        <!-- Items Purchased -->
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <h5 class="fw-bold mb-3 pb-2 border-bottom">Items in Order (@Model.Items.Count())</h5>
+                <div class="table-responsive">
+                    <table class="table align-middle">
+                        <thead class="table-light small text-uppercase text-muted">
+                            <tr>
+                                <th class="py-2">Item</th>
+                                <th class="py-2">Vendor</th>
+                                <th class="py-2 text-center">Qty</th>
+                                <th class="py-2 text-end">Price</th>
+                                <th class="py-2 text-end">Subtotal</th>
+                                @if (Model.Status == OrderStatuses.Delivered)
+                                {
+                                    <th class="py-2 text-center">Action</th>
+                                }
+                            </tr>
+                        </thead>
+                        <tbody>
+                            @foreach (var item in Model.Items)
+                            {
+                                <tr>
+                                    <td class="py-3">
+                                        <a href="/product/@item.ProductId" class="fw-bold text-dark text-decoration-none">
+                                            @item.ProductName
+                                        </a>
+                                        <div class="small text-muted">SKU: #@item.ProductId</div>
+                                    </td>
+                                    <td class="py-3">
+                                        <span class="badge bg-light text-dark border">
+                                            <i class="bi bi-shop me-1 text-primary"></i>@item.SellerShopName
+                                        </span>
+                                    </td>
+                                    <td class="py-3 text-center fw-semibold">
+                                        @item.Quantity
+                                    </td>
+                                    <td class="py-3 text-end">
+                                        ₹@item.PriceAtPurchase.ToString("N2")
+                                    </td>
+                                    <td class="py-3 text-end fw-bold text-dark">
+                                        ₹@item.Subtotal.ToString("N2")
+                                    </td>
+                                    @if (Model.Status == OrderStatuses.Delivered)
+                                    {
+                                        <td class="py-3 text-center">
+                                            <a href="/product/@item.ProductId#reviews-section" class="btn btn-sm btn-outline-primary rounded-pill">
+                                                <i class="bi bi-star me-1"></i>Review
+                                            </a>
+                                        </td>
+                                    }
+                                </tr>
+                            }
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- Shipping & Payment Breakdown -->
+        <div class="col-lg-4">
+            <!-- Shipping Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white mb-4">
+                <h6 class="fw-bold mb-3 text-muted text-uppercase small">Shipping Address</h6>
+                <div class="fw-bold text-dark">@Model.FullName</div>
+                <div class="text-secondary small mt-1">@Model.ShippingAddress</div>
+                <div class="text-secondary small">@Model.City, @Model.State - @Model.PostalCode</div>
+                <div class="text-secondary small mt-2"><i class="bi bi-telephone me-1"></i>@Model.Phone</div>
+            </div>
+
+            <!-- Payment Summary Card -->
+            <div class="card border-0 shadow-sm rounded-4 p-4 bg-white">
+                <h6 class="fw-bold mb-3 text-muted text-uppercase small">Payment Details</h6>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="small text-muted">Payment Status:</span>
+                    <span class="badge bg-success-subtle text-success">@(Model.Payment?.Status ?? "PAID")</span>
+                </div>
+                <div class="d-flex justify-content-between mb-2">
+                    <span class="small text-muted">Transaction ID:</span>
+                    <span class="small font-monospace text-dark">@(Model.Payment?.TransactionId ?? "TXN_" + Model.Id)</span>
+                </div>
+                <hr class="my-3 opacity-25" />
+                <div class="d-flex justify-content-between align-items-baseline">
+                    <span class="fw-bold text-dark">Grand Total:</span>
+                    <span class="fs-5 fw-bold text-primary">₹@Model.TotalAmount.ToString("N2")</span>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

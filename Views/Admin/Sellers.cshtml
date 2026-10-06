@@ -1,0 +1,80 @@
+@model IEnumerable<SellerProfileDto>
+@{
+    ViewData["Title"] = "Pending Seller Approvals";
+}
+
+<div class="container py-4">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <div>
+            <h2 class="fw-bold m-0"><i class="bi bi-person-check me-2 text-danger"></i>Vendor Applications</h2>
+            <p class="text-muted small m-0">Review pending seller shop applications and authorize vendor accounts</p>
+        </div>
+        <a href="/admin/dashboard" class="btn btn-outline-secondary btn-sm rounded-pill">
+            <i class="bi bi-arrow-left me-1"></i>Back to Dashboard
+        </a>
+    </div>
+
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white">
+        @if (!Model.Any())
+        {
+            <div class="p-5 text-center text-muted">
+                <i class="bi bi-check2-circle fs-1 text-success d-block mb-2"></i>
+                <h5>All caught up!</h5>
+                <p class="small mb-0">There are currently no pending vendor applications requiring approval.</p>
+            </div>
+        }
+        else
+        {
+            <div class="table-responsive">
+                <table class="table align-middle mb-0">
+                    <thead class="table-light small text-uppercase text-muted">
+                        <tr>
+                            <th class="ps-4 py-3">Shop Name</th>
+                            <th class="py-3">Applicant Email</th>
+                            <th class="py-3" style="max-width: 300px;">Business Description</th>
+                            <th class="py-3">Submitted</th>
+                            <th class="py-3 text-end pe-4">Decisions</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach (var seller in Model)
+                        {
+                            <tr>
+                                <td class="ps-4 py-3">
+                                    <div class="fw-bold text-dark fs-6">@seller.ShopName</div>
+                                    <div class="small text-muted">Profile ID #@seller.Id</div>
+                                </td>
+                                <td class="py-3">
+                                    <div class="fw-semibold">@seller.OwnerName</div>
+                                    <div class="small text-muted">@seller.OwnerEmail</div>
+                                </td>
+                                <td class="py-3 text-secondary small" style="max-width: 300px;">
+                                    @seller.Description
+                                </td>
+                                <td class="py-3 text-muted small">
+                                    @seller.CreatedAt.ToString("MMM dd, yyyy")
+                                </td>
+                                <td class="py-3 text-end pe-4">
+                                    <div class="d-inline-flex gap-2">
+                                        <form asp-action="ApproveSeller" asp-route-id="@seller.Id" method="post" class="m-0">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-success rounded-pill px-3">
+                                                <i class="bi bi-check-lg me-1"></i>Approve
+                                            </button>
+                                        </form>
+                                        <form asp-action="RejectSeller" asp-route-id="@seller.Id" method="post" class="m-0" onsubmit="return confirm('Are you sure you want to reject this vendor application?');">
+                                            @Html.AntiForgeryToken()
+                                            <button type="submit" class="btn btn-sm btn-outline-danger rounded-pill px-3">
+                                                <i class="bi bi-x-lg me-1"></i>Reject
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        }
+                    </tbody>
+                </table>
+            </div>
+        }
+    </div>
+</div>

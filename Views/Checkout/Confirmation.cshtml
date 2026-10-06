@@ -1,0 +1,76 @@
+@model OrderResponseDto
+@{
+    ViewData["Title"] = "Order Confirmed #" + Model.Id;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white text-center mb-4">
+                <div class="text-success mb-3">
+                    <i class="bi bi-patch-check-fill display-1"></i>
+                </div>
+                <h2 class="fw-bold text-dark mb-1">Thank You! Your Order is Confirmed</h2>
+                <p class="text-muted mb-4">Order #<strong>@Model.Id</strong> has been placed and received by our independent vendor(s).</p>
+
+                <div class="row g-3 text-start bg-light p-4 rounded-4 mb-4 border">
+                    <div class="col-md-6 border-end-md">
+                        <div class="small text-muted text-uppercase fw-semibold mb-1">Delivery Address</div>
+                        <div class="fw-bold text-dark">@Model.FullName</div>
+                        <div class="small text-secondary">@Model.ShippingAddress</div>
+                        <div class="small text-secondary">@Model.City, @Model.State - @Model.PostalCode</div>
+                        <div class="small text-secondary mt-1"><i class="bi bi-telephone me-1"></i>@Model.Phone</div>
+                    </div>
+                    <div class="col-md-6 ps-md-4">
+                        <div class="small text-muted text-uppercase fw-semibold mb-1">Payment & Status</div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted">Order Status:</span>
+                            <span class="badge bg-warning text-dark">@Model.Status</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted">Payment:</span>
+                            <span class="badge bg-success">@(Model.Payment?.Status ?? "PAID")</span>
+                        </div>
+                        <div class="d-flex justify-content-between mb-1">
+                            <span class="small text-muted">Transaction ID:</span>
+                            <span class="small text-dark font-monospace">@(Model.Payment?.TransactionId ?? "TXN_" + Model.Id)</span>
+                        </div>
+                        <div class="d-flex justify-content-between pt-2 border-top mt-2">
+                            <span class="fw-bold">Total Paid:</span>
+                            <span class="fw-bold text-primary">₹@Model.TotalAmount.ToString("N2")</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Purchased Items -->
+                <div class="text-start mb-4">
+                    <h6 class="fw-bold mb-3">Items Purchased (@Model.Items.Count())</h6>
+                    <div class="list-group list-group-flush border rounded-3 overflow-hidden">
+                        @foreach (var item in Model.Items)
+                        {
+                            <div class="list-group-item d-flex justify-content-between align-items-center py-3">
+                                <div>
+                                    <div class="fw-bold text-dark">@item.ProductName</div>
+                                    <div class="small text-muted">Vendor: <span class="text-primary">@item.SellerShopName</span> &bull; Qty: @item.Quantity &times; ₹@item.PriceAtPurchase.ToString("N2")</div>
+                                </div>
+                                <div class="fw-bold text-dark">
+                                    ₹@item.Subtotal.ToString("N2")
+                                </div>
+                            </div>
+                        }
+                    </div>
+                </div>
+
+                <!-- Action buttons -->
+                <div class="d-flex justify-content-center gap-3 flex-wrap">
+                    <a href="/orders/details/@Model.Id" class="btn btn-primary-custom px-4">
+                        <i class="bi bi-box-seam me-1"></i>View Order Details & Tracking
+                    </a>
+                    <a href="/" class="btn btn-outline-secondary px-4">
+                        Continue Shopping
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

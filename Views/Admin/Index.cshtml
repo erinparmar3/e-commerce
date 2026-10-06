@@ -1,0 +1,160 @@
+@model AdminDashboardDto
+@{
+    ViewData["Title"] = "Admin Dashboard";
+    var pendingSellers = ViewBag.PendingSellers as IEnumerable<SellerProfileDto> ?? new List<SellerProfileDto>();
+    var recentOrders = ViewBag.RecentOrders as IEnumerable<OrderResponseDto> ?? new List<OrderResponseDto>();
+}
+
+<div class="container py-4">
+    <!-- Header -->
+    <div class="d-flex justify-content-between align-items-center flex-wrap gap-3 mb-4">
+        <div>
+            <div class="d-flex align-items-center gap-2">
+                <h2 class="fw-bold m-0"><i class="bi bi-speedometer2 me-2 text-danger"></i>Platform Administration</h2>
+                <span class="badge bg-danger">ADMINISTRATOR</span>
+            </div>
+            <p class="text-muted small m-0 mt-1">Multi-Vendor marketplace overview, KPIs, and seller verification</p>
+        </div>
+
+        <div class="d-flex gap-2">
+            <a href="/admin/sellers" class="btn btn-outline-danger btn-sm rounded-pill px-3">
+                <i class="bi bi-person-check me-1"></i>Sellers (@pendingSellers.Count() Pending)
+            </a>
+            <a href="/admin/categories" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-tags me-1"></i>Categories
+            </a>
+            <a href="/admin/users" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-people me-1"></i>Users
+            </a>
+            <a href="/admin/orders" class="btn btn-outline-secondary btn-sm rounded-pill px-3">
+                <i class="bi bi-box-seam me-1"></i>All Orders
+            </a>
+        </div>
+    </div>
+
+    <!-- Alert for Pending Sellers -->
+    @if (pendingSellers.Any())
+    {
+        <div class="alert alert-warning border-0 shadow-sm rounded-4 p-3 d-flex justify-content-between align-items-center mb-4">
+            <div class="d-flex align-items-center gap-3">
+                <i class="bi bi-exclamation-circle-fill fs-3 text-warning"></i>
+                <div>
+                    <h6 class="fw-bold m-0">@pendingSellers.Count() Vendor Application(s) Awaiting Approval</h6>
+                    <span class="small text-muted">Review shop information and grant selling privileges.</span>
+                </div>
+            </div>
+            <a href="/admin/sellers" class="btn btn-warning btn-sm rounded-pill px-3 fw-bold">
+                Review Now
+            </a>
+        </div>
+    }
+
+    <!-- KPI Metric Cards -->
+    <div class="row g-3 mb-5">
+        <div class="col-sm-6 col-xl-2-4" style="flex: 1 0 200px;">
+            <div class="metric-card">
+                <div class="metric-icon-wrap metric-blue">
+                    <i class="bi bi-people"></i>
+                </div>
+                <div>
+                    <div class="small text-muted text-uppercase fw-semibold">Total Users</div>
+                    <div class="fs-4 fw-bold text-dark">@Model.TotalUsers</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-2-4" style="flex: 1 0 200px;">
+            <div class="metric-card">
+                <div class="metric-icon-wrap metric-purple">
+                    <i class="bi bi-shop"></i>
+                </div>
+                <div>
+                    <div class="small text-muted text-uppercase fw-semibold">Sellers</div>
+                    <div class="fs-4 fw-bold text-dark">@Model.TotalSellers</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-2-4" style="flex: 1 0 200px;">
+            <div class="metric-card">
+                <div class="metric-icon-wrap metric-amber">
+                    <i class="bi bi-box-seam"></i>
+                </div>
+                <div>
+                    <div class="small text-muted text-uppercase fw-semibold">Products</div>
+                    <div class="fs-4 fw-bold text-dark">@Model.TotalProducts</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-2-4" style="flex: 1 0 200px;">
+            <div class="metric-card">
+                <div class="metric-icon-wrap metric-emerald">
+                    <i class="bi bi-cart-check"></i>
+                </div>
+                <div>
+                    <div class="small text-muted text-uppercase fw-semibold">Orders</div>
+                    <div class="fs-4 fw-bold text-dark">@Model.TotalOrders</div>
+                </div>
+            </div>
+        </div>
+
+        <div class="col-sm-6 col-xl-2-4" style="flex: 1 0 200px;">
+            <div class="metric-card">
+                <div class="metric-icon-wrap" style="background: #fef2f2; color: #ef4444;">
+                    <i class="bi bi-cash-stack"></i>
+                </div>
+                <div>
+                    <div class="small text-muted text-uppercase fw-semibold">GMV Revenue</div>
+                    <div class="fs-4 fw-bold text-dark">₹@Model.TotalSales.ToString("N0")</div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Recent Platform Orders -->
+    <div class="card border-0 shadow-sm rounded-4 overflow-hidden bg-white mb-4">
+        <div class="card-header bg-white py-3 px-4 d-flex justify-content-between align-items-center">
+            <h5 class="fw-bold m-0"><i class="bi bi-clock-history me-2 text-primary"></i>Recent Marketplace Orders</h5>
+            <a href="/admin/orders" class="small text-decoration-none">View All Orders &rarr;</a>
+        </div>
+        <div class="table-responsive">
+            <table class="table align-middle mb-0">
+                <thead class="table-light small text-uppercase text-muted">
+                    <tr>
+                        <th class="ps-4 py-3">Order #</th>
+                        <th class="py-3">Customer</th>
+                        <th class="py-3">Date</th>
+                        <th class="py-3">Total</th>
+                        <th class="py-3">Status</th>
+                        <th class="py-3">Payment</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var ord in recentOrders)
+                    {
+                        <tr>
+                            <td class="ps-4 py-3 fw-bold text-dark">#@ord.Id</td>
+                            <td class="py-3">
+                                <div class="fw-semibold">@ord.CustomerName</div>
+                                <div class="small text-muted">@ord.City, @ord.State</div>
+                            </td>
+                            <td class="py-3 text-muted small">@ord.CreatedAt.ToString("MMM dd, yyyy")</td>
+                            <td class="py-3 fw-bold text-dark">₹@ord.TotalAmount.ToString("N2")</td>
+                            <td class="py-3">
+                                <span class="badge @(ord.Status == OrderStatuses.Delivered ? "bg-success" : ord.Status == OrderStatuses.Cancelled ? "bg-danger" : "bg-warning text-dark")">
+                                    @ord.Status
+                                </span>
+                            </td>
+                            <td class="py-3">
+                                <span class="badge bg-light text-secondary border">
+                                    @(ord.Payment?.Status ?? "PAID")
+                                </span>
+                            </td>
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>

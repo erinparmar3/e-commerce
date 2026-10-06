@@ -1,0 +1,90 @@
+@model SellerApplicationDto
+@{
+    ViewData["Title"] = "Become a Seller";
+    var existing = ViewBag.ExistingProfile as SellerProfileDto;
+}
+
+<div class="container py-5">
+    <div class="row justify-content-center">
+        <div class="col-lg-7">
+            @if (existing != null)
+            {
+                <div class="card border-0 shadow-sm rounded-4 p-5 bg-white text-center mb-4">
+                    <div class="mb-3">
+                        @if (existing.Status == SellerStatuses.Approved)
+                        {
+                            <i class="bi bi-patch-check-fill text-success display-1"></i>
+                            <h3 class="fw-bold mt-2">You are an Approved Seller!</h3>
+                            <p class="text-muted">Your shop "<strong>@existing.ShopName</strong>" is active. You can start listing products and fulfilling orders right away.</p>
+                            <a href="/seller/dashboard" class="btn btn-primary-custom px-4 py-2">
+                                <i class="bi bi-speedometer2 me-1"></i>Go to Seller Dashboard
+                            </a>
+                        }
+                        else if (existing.Status == SellerStatuses.Pending)
+                        {
+                            <i class="bi bi-hourglass-split text-warning display-1"></i>
+                            <h3 class="fw-bold mt-2">Application Under Review</h3>
+                            <p class="text-muted">
+                                Your application for "<strong>@existing.ShopName</strong>" submitted on @existing.CreatedAt.ToString("MMM dd, yyyy") is awaiting approval from our administrator team.
+                            </p>
+                            <div class="alert alert-info border-0 rounded-3 small">
+                                <i class="bi bi-info-circle me-1"></i>Admin review typically takes less than 24 hours. You will receive an automated notification once approved.
+                            </div>
+                        }
+                        else
+                        {
+                            <i class="bi bi-x-circle text-danger display-1"></i>
+                            <h3 class="fw-bold mt-2">Application Status: @existing.Status</h3>
+                            <p class="text-muted">Your application was not approved. Please reach out to platform support for further details.</p>
+                        }
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
+                    <div class="text-center mb-4">
+                        <div class="bg-primary bg-opacity-10 text-primary p-3 rounded-circle d-inline-flex mb-2">
+                            <i class="bi bi-shop fs-2"></i>
+                        </div>
+                        <h3 class="fw-bold">Open Your Seller Shop</h3>
+                        <p class="text-muted small">Reach thousands of buyers by listing your catalog on ShopNet</p>
+                    </div>
+
+                    @if (!ViewData.ModelState.IsValid)
+                    {
+                        <div class="alert alert-danger py-2 small border-0 rounded-3 mb-4">
+                            @Html.ValidationSummary(false, "", new { @class = "m-0 list-unstyled" })
+                        </div>
+                    }
+
+                    <form asp-action="Apply" method="post">
+                        @Html.AntiForgeryToken()
+
+                        <div class="mb-3">
+                            <label class="form-label small fw-semibold text-muted">Shop / Business Name</label>
+                            <input type="text" name="ShopName" class="form-control" placeholder="e.g. Acme Tech Electronics" value="@Model?.ShopName" required minlength="3" maxlength="150" />
+                            <div class="form-text small">This name will be displayed on product listings and invoices.</div>
+                        </div>
+
+                        <div class="mb-4">
+                            <label class="form-label small fw-semibold text-muted">Business Description & Categories</label>
+                            <textarea name="Description" class="form-control" rows="4" placeholder="Tell us about the products you intend to sell, quality standards, and dispatch capabilities..." required minlength="10" maxlength="1000">@Model?.Description</textarea>
+                        </div>
+
+                        <div class="bg-light p-3 rounded-3 mb-4 border small text-muted">
+                            <div class="fw-bold text-dark mb-1"><i class="bi bi-check2-circle text-success me-1"></i>What happens next?</div>
+                            Our administrators will review your shop details and grant Seller permissions to your account.
+                        </div>
+
+                        <div class="d-grid gap-2">
+                            <button type="submit" class="btn btn-primary-custom py-2">
+                                <i class="bi bi-send-check me-1"></i>Submit Seller Application
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            }
+        </div>
+    </div>
+</div>

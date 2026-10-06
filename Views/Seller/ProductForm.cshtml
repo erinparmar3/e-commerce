@@ -1,0 +1,134 @@
+@model dynamic
+@{
+    bool isEdit = ViewBag.IsEdit == true;
+    int? productId = ViewBag.ProductId as int?;
+    ViewData["Title"] = isEdit ? "Edit Product" : "List New Product";
+    var categories = ViewBag.Categories as IEnumerable<CategoryResponseDto> ?? new List<CategoryResponseDto>();
+}
+
+<div class="container py-4">
+    <div class="row justify-content-center">
+        <div class="col-lg-8">
+            <div class="card border-0 shadow-sm rounded-4 p-4 p-md-5 bg-white">
+                <div class="d-flex justify-content-between align-items-center mb-4 pb-2 border-bottom">
+                    <div>
+                        <h3 class="fw-bold m-0"><i class="bi @(isEdit ? "bi-pencil-square text-primary" : "bi-plus-circle text-success") me-2"></i>@(isEdit ? "Edit Product Listing" : "List New Product")</h3>
+                        <p class="text-muted small m-0">Provide product specifications, pricing, inventory stock, and high-quality photos</p>
+                    </div>
+                    <a href="/seller/dashboard" class="btn btn-outline-secondary btn-sm rounded-pill">
+                        Cancel
+                    </a>
+                </div>
+
+                @if (!ViewData.ModelState.IsValid)
+                {
+                    <div class="alert alert-danger py-2 small border-0 rounded-3 mb-4">
+                        @Html.ValidationSummary(false, "", new { @class = "m-0 list-unstyled" })
+                    </div>
+                }
+
+                <form asp-action="@(isEdit ? "EditProduct" : "NewProduct")" asp-route-id="@productId" method="post" enctype="multipart/form-data">
+                    @Html.AntiForgeryToken()
+
+                    <div class="row g-3 mb-3">
+                        <div class="col-md-8">
+                            <label class="form-label small fw-semibold text-muted">Product Title / Name</label>
+                            <input type="text" name="Name" class="form-control" value="@Model.Name" placeholder="e.g. Mechanical Gaming Keyboard" required minlength="2" maxlength="200" />
+                        </div>
+                        <div class="col-md-4">
+                            <label class="form-label small fw-semibold text-muted">Category</label>
+                            <select name="CategoryId" class="form-select" required>
+                                <option value="">Select Category</option>
+                                @foreach (var cat in categories)
+                                {
+                                    <option value="@cat.Id" selected="@(Model.CategoryId == cat.Id)">@cat.Name</option>
+                                }
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="row g-3 mb-4">
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-muted">Selling Price (₹)</label>
+                            <div class="input-group">
+                                <span class="input-group-text bg-light text-muted">₹</span>
+                                <input type="number" step="0.01" name="Price" class="form-control" value="@Model.Price" placeholder="0.00" required min="0.01" />
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label small fw-semibold text-muted">Available Stock Units</label>
+                            <input type="number" name="StockQuantity" class="form-control" value="@Model.StockQuantity" placeholder="10" required min="0" />
+                        </div>
+                    </div>
+
+                    <!-- Product Image Upload Section -->
+                    <div class="card bg-light border-0 rounded-4 p-4 mb-4">
+                        <label class="form-label small fw-bold text-dark d-flex align-items-center gap-2 mb-2">
+                            <i class="bi bi-camera text-primary fs-5"></i>
+                            <span>Product Image (Upload from Local Device)</span>
+                        </label>
+                        <p class="text-muted small mb-3">Upload a clean, clear photo of the product (JPG, PNG, or WEBP up to 5MB).</p>
+
+                        <div class="row align-items-center g-3">
+                            <div class="col-md-8">
+                                <div class="input-group mb-2">
+                                    <input type="file" name="ImageFile" id="prod-file-input" class="form-control" accept="image/png, image/jpeg, image/jpg, image/webp" onchange="previewSelectedImage(this);" />
+                                </div>
+                                <div class="d-flex align-items-center gap-2 text-muted small">
+                                    <span>Or paste image URL (optional):</span>
+                                </div>
+                                <input type="url" name="ImageUrl" id="prod-url-input" class="form-control form-control-sm mt-1" value="@Model.ImageUrl" placeholder="https://..." oninput="previewUrlImage(this.value);" />
+                            </div>
+
+                            <div class="col-md-4 text-center">
+                                <div class="border rounded-3 p-2 bg-white d-flex align-items-center justify-content-center mx-auto" style="width: 130px; height: 130px; overflow: hidden;">
+                                    <img id="img-preview" src="@(string.IsNullOrEmpty(Model.ImageUrl) ? "/images/placeholder.png" : Model.ImageUrl)" alt="Preview" style="max-width: 100%; max-height: 100%; object-fit: contain;" onerror="this.onerror=null;this.src='/images/placeholder.png';" />
+                                </div>
+                                <span class="small text-muted d-block mt-1">Live Preview</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <label class="form-label small fw-semibold text-muted">Product Description & Specifications</label>
+                        <textarea name="Description" class="form-control" rows="5" placeholder="Detailed product specifications, warranty info, box contents..." required minlength="5" maxlength="2000">@Model.Description</textarea>
+                    </div>
+
+                    @if (isEdit)
+                    {
+                        <div class="form-check form-switch mb-4">
+                            <input class="form-check-input" type="checkbox" name="IsActive" id="prod-active" value="true" checked="@(Model.IsActive == true)">
+                            <label class="form-check-label fw-semibold small" for="prod-active">Product is Active & Visible in ShopNet Storefront</label>
+                        </div>
+                    }
+
+                    <div class="d-flex justify-content-end gap-2">
+                        <a href="/seller/dashboard" class="btn btn-outline-secondary px-4">Cancel</a>
+                        <button type="submit" class="btn btn-primary-custom px-4">
+                            <i class="bi bi-check-lg me-1"></i>@(isEdit ? "Save Changes" : "Publish Product")
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+@section Scripts {
+    <script>
+        function previewSelectedImage(input) {
+            if (input.files && input.files[0]) {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    document.getElementById('img-preview').src = e.target.result;
+                };
+                reader.readAsDataURL(input.files[0]);
+            }
+        }
+        function previewUrlImage(url) {
+            if (url && url.trim().length > 5) {
+                document.getElementById('img-preview').src = url;
+            }
+        }
+    </script>
+}

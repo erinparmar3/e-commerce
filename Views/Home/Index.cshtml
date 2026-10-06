@@ -1,71 +1,353 @@
-@model List<Product>
+@model PaginatedResult<ProductResponseDto>
 @{
-    ViewData["Title"] = "Shop";
-    var categories = (List<string>)ViewBag.Categories;
+    ViewData["Title"] = "Online Shopping Marketplace";
+    var categories = ViewBag.Categories as IEnumerable<CategoryResponseDto> ?? new List<CategoryResponseDto>();
+    var q = ViewBag.CurrentQuery as ProductQueryParameters ?? new ProductQueryParameters();
+    var wishlistIds = ViewBag.WishlistIds as HashSet<int> ?? new HashSet<int>();
 }
 
-<div class="row mb-4">
-    <div class="col-md-6">
-        <h2>Products</h2>
-    </div>
-    <div class="col-md-6">
-        <form method="get" asp-action="Index" class="d-flex gap-2">
-            <input type="text" name="search" value="@ViewBag.Search" class="form-control" placeholder="Search products..." />
-            <select name="category" class="form-select" style="max-width:180px" onchange="this.form.submit()">
-                <option value="All" selected="@(ViewBag.SelectedCategory == "All")">All categories</option>
-                @foreach (var c in categories)
-                {
-                    <option value="@c" selected="@(ViewBag.SelectedCategory == c)">@c</option>
-                }
-            </select>
-            <button class="btn btn-outline-primary" type="submit">Go</button>
-        </form>
-    </div>
-</div>
-
-@if (!Model.Any())
-{
-    <p class="text-muted">No products found.</p>
-}
-
-<div class="row row-cols-1 row-cols-sm-2 row-cols-md-3 row-cols-lg-4 g-4">
-    @foreach (var product in Model)
-    {
-        <div class="col">
-            <div class="card h-100 shadow-sm">
-                <img src="@product.ImageUrl" class="card-img-top p-3" alt="@product.Name" style="height:180px;object-fit:contain;" />
-                <div class="card-body d-flex flex-column">
-                    <h6 class="card-title">@product.Name</h6>
-                    <p class="text-muted small mb-1">@product.Category</p>
-                    <p class="fw-bold mb-2">@product.Price.ToString("C")</p>
-                    @if (product.StockQuantity == 0)
+<div class="container py-4">
+    <!-- Hero Banner -->
+    <div class="hero-banner mb-4">
+        <div class="row align-items-center">
+            <div class="col-lg-7">
+                <span class="badge bg-primary px-3 py-2 rounded-pill mb-3 text-uppercase fw-semibold tracking-wider">
+                    <i class="bi bi-stars me-1 text-warning"></i>Trusted Marketplace
+                </span>
+                <h1 class="display-5 fw-bold mb-3">Shop Quality Products from Verified Independent Sellers</h1>
+                <p class="lead text-light mb-4" style="color: #cbd5e1 !important;">
+                    Explore top-rated electronics, trending fashion, home essentials, and everyday lifestyle picks at exceptional everyday value with fast doorstep delivery.
+                </p>
+                <div class="d-flex flex-wrap gap-3">
+                    <a href="#catalog" class="btn btn-primary-custom px-4 py-2">
+                        <i class="bi bi-bag-check me-1"></i>Shop Deals
+                    </a>
+                    @if (!User.Identity?.IsAuthenticated == true || !User.IsInRole(UserRoles.Seller))
                     {
-                        <span class="badge bg-secondary mb-2">Out of stock</span>
+                        <a href="/seller/apply" class="btn btn-outline-light rounded-3 px-4 py-2">
+                            <i class="bi bi-shop me-1"></i>Become a Seller
+                        </a>
                     }
-                    else if (product.StockQuantity <= 5)
-                    {
-                        <span class="badge bg-warning text-dark mb-2">Only @product.StockQuantity left</span>
-                    }
-                    <div class="mt-auto d-grid gap-2">
-                        <a asp-action="Details" asp-route-id="@product.Id" class="btn btn-outline-secondary btn-sm">View</a>
-                        @if (User.Identity?.IsAuthenticated == true)
-                        {
-                            <form asp-controller="Cart" asp-action="AddToCart" method="post">
-                                <input type="hidden" name="productId" value="@product.Id" />
-                                <input type="hidden" name="quantity" value="1" />
-                                <input type="hidden" name="returnUrl" value="@(Context.Request.Path + Context.Request.QueryString)" />
-                                <button type="submit" class="btn btn-primary btn-sm w-100" @(product.StockQuantity == 0 ? "disabled" : "")>
-                                    Add to Cart
-                                </button>
-                            </form>
-                        }
-                        else
-                        {
-                            <a asp-controller="Account" asp-action="Login" class="btn btn-primary btn-sm">Log in to buy</a>
-                        }
+                </div>
+            </div>
+            <div class="col-lg-5 d-none d-lg-block text-center">
+                <div class="p-3 bg-white bg-opacity-10 rounded-4 border border-white border-opacity-10 backdrop-blur">
+                    <div class="row g-3 text-start">
+                        <div class="col-6">
+                            <div class="bg-dark bg-opacity-50 p-3 rounded-3">
+                                <div class="fs-4 fw-bold text-white">@Model.TotalCount+</div>
+                                <div class="small text-white-50">Live Products</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-dark bg-opacity-50 p-3 rounded-3">
+                                <div class="fs-4 fw-bold text-success">100%</div>
+                                <div class="small text-white-50">Verified Sellers</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-dark bg-opacity-50 p-3 rounded-3">
+                                <div class="fs-4 fw-bold text-info">Fast & Free</div>
+                                <div class="small text-white-50">Orders Over ₹499</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="bg-dark bg-opacity-50 p-3 rounded-3">
+                                <div class="fs-4 fw-bold text-warning">Secure</div>
+                                <div class="small text-white-50">Buyer Protection</div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
+    </div>
+
+    <!-- Popular Categories Quick Grid -->
+    @if (categories.Any())
+    {
+        <div class="mb-5">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h4 class="fw-bold m-0 text-dark">
+                    <i class="bi bi-grid-3x3-gap-fill text-primary me-2"></i>Shop by Category
+                </h4>
+                <a href="#catalog" class="text-primary small fw-semibold text-decoration-none">View All Catalog <i class="bi bi-arrow-right"></i></a>
+            </div>
+            <div class="row row-cols-2 row-cols-md-3 row-cols-lg-5 g-3">
+                @foreach (var cat in categories)
+                {
+                    <div class="col">
+                        <a href="/?categoryId=@cat.Id#catalog" class="card category-feature-card text-decoration-none h-100 p-3 text-center border-0 shadow-sm rounded-4 @(q.CategoryId == cat.Id ? "active" : "")">
+                            <div class="category-icon-wrapper mx-auto mb-2">
+                                @if (cat.Name.Contains("Elect", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <i class="bi bi-laptop fs-3 text-primary"></i>
+                                }
+                                else if (cat.Name.Contains("Fash", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Cloth", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <i class="bi bi-bag-heart fs-3 text-danger"></i>
+                                }
+                                else if (cat.Name.Contains("Home", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Kitchen", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <i class="bi bi-house-heart fs-3 text-warning"></i>
+                                }
+                                else if (cat.Name.Contains("Book", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <i class="bi bi-book fs-3 text-info"></i>
+                                }
+                                else if (cat.Name.Contains("Sport", StringComparison.OrdinalIgnoreCase) || cat.Name.Contains("Fit", StringComparison.OrdinalIgnoreCase))
+                                {
+                                    <i class="bi bi-bicycle fs-3 text-success"></i>
+                                }
+                                else
+                                {
+                                    <i class="bi bi-tag fs-3 text-secondary"></i>
+                                }
+                            </div>
+                            <div class="fw-bold text-dark small text-truncate">@cat.Name</div>
+                            <div class="text-muted" style="font-size: 0.725rem;">Browse Collection</div>
+                        </a>
+                    </div>
+                }
+            </div>
+        </div>
     }
+
+    <!-- Catalog Section with Filters -->
+    <div id="catalog" class="row g-4">
+        <!-- Sidebar Filters -->
+        <div class="col-lg-3">
+            <div class="filter-card sticky-top" style="top: 80px; z-index: 10;">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold m-0"><i class="bi bi-funnel me-2 text-primary"></i>Filters</h5>
+                    <a href="/" class="small text-decoration-none text-muted">Reset All</a>
+                </div>
+
+                <form method="get" action="/">
+                    <!-- Search query preserve -->
+                    @if (!string.IsNullOrEmpty(q.Search))
+                    {
+                        <input type="hidden" name="search" value="@q.Search" />
+                    }
+
+                    <!-- Category Filter -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small text-uppercase text-muted">Category</label>
+                        <div class="d-flex flex-column gap-2">
+                            <div class="form-check">
+                                <input class="form-check-input" type="radio" name="categoryId" id="cat-all" value="" @(q.CategoryId == null ? "checked" : "") onchange="this.form.submit()">
+                                <label class="form-check-label small" for="cat-all">All Categories</label>
+                            </div>
+                            @foreach (var cat in categories)
+                            {
+                                <div class="form-check">
+                                    <input class="form-check-input" type="radio" name="categoryId" id="cat-@cat.Id" value="@cat.Id" @(q.CategoryId == cat.Id ? "checked" : "") onchange="this.form.submit()">
+                                    <label class="form-check-label small" for="cat-@cat.Id">@cat.Name</label>
+                                </div>
+                            }
+                        </div>
+                    </div>
+
+                    <!-- Price Range -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small text-uppercase text-muted">Price Range (₹)</label>
+                        <div class="row g-2 mb-2">
+                            <div class="col-6">
+                                <input type="number" name="minPrice" class="form-control form-control-sm" placeholder="Min" value="@q.MinPrice" />
+                            </div>
+                            <div class="col-6">
+                                <input type="number" name="maxPrice" class="form-control form-control-sm" placeholder="Max" value="@q.MaxPrice" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Sort -->
+                    <div class="mb-4">
+                        <label class="form-label fw-semibold small text-uppercase text-muted">Sort By</label>
+                        <select name="sort" class="form-select form-select-sm" onchange="this.form.submit()">
+                            <option value="" selected="@(string.IsNullOrEmpty(q.Sort))">Featured</option>
+                            <option value="price_asc" selected="@(q.Sort == "price_asc")">Price: Low to High</option>
+                            <option value="price_desc" selected="@(q.Sort == "price_desc")">Price: High to Low</option>
+                            <option value="newest" selected="@(q.Sort == "newest")">Newest Arrivals</option>
+                            <option value="name_asc" selected="@(q.Sort == "name_asc")">Name: A to Z</option>
+                        </select>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary-custom w-100 btn-sm">
+                        <i class="bi bi-check-lg me-1"></i>Apply Filters
+                    </button>
+                </form>
+            </div>
+        </div>
+
+        <!-- Products Listing -->
+        <div class="col-lg-9">
+            <!-- Filter summary & active indicators -->
+            <div class="d-flex justify-content-between align-items-center flex-wrap gap-2 mb-4 bg-white p-3 rounded-3 border">
+                <div>
+                    <span class="fw-semibold">Showing @Model.Items.Count() of @Model.TotalCount items</span>
+                    @if (!string.IsNullOrEmpty(q.Search))
+                    {
+                        <span class="badge bg-light text-dark border ms-2">Keyword: "@q.Search"</span>
+                    }
+                    @if (q.CategoryId != null)
+                    {
+                        var activeCat = categories.FirstOrDefault(c => c.Id == q.CategoryId);
+                        if (activeCat != null)
+                        {
+                            <span class="badge bg-primary-subtle text-primary border ms-2">Category: @activeCat.Name</span>
+                        }
+                    }
+                </div>
+            </div>
+
+            @if (!Model.Items.Any())
+            {
+                <div class="card border-0 shadow-sm rounded-4 p-5 text-center">
+                    <div class="text-muted mb-3"><i class="bi bi-search display-3"></i></div>
+                    <h4 class="fw-bold mb-2">No products matched your criteria</h4>
+                    <p class="text-muted mb-4">Try clearing your filters, adjusting the price range, or searching for a different keyword.</p>
+                    <div>
+                        <a href="/" class="btn btn-primary-custom">Clear All Filters</a>
+                    </div>
+                </div>
+            }
+            else
+            {
+                <div class="row row-cols-1 row-cols-sm-2 row-cols-md-2 row-cols-xl-3 g-4">
+                    @foreach (var product in Model.Items)
+                    {
+                        <div class="col">
+                            <div class="product-card">
+                                <!-- Wishlist Heart Button -->
+                                @{
+                                    bool inWishlist = wishlistIds.Contains(product.Id);
+                                }
+                                <form action="/wishlist/toggle/@product.Id" method="post" class="m-0 wishlist-toggle-form" data-product-id="@product.Id">
+                                    @Html.AntiForgeryToken()
+                                    <input type="hidden" name="productId" value="@product.Id" />
+                                    <button type="submit" class="wishlist-btn-overlay @(inWishlist ? "active text-danger" : "")" title="@(inWishlist ? "Saved in Wishlist" : "Save to Wishlist")">
+                                        <i class="bi @(inWishlist ? "bi-heart-fill text-danger" : "bi-heart")"></i>
+                                    </button>
+                                </form>
+
+                                <!-- Media / Thumbnail -->
+                                <a href="/product/@product.Id" class="card-media text-decoration-none">
+                                    @if (!string.IsNullOrEmpty(product.ImageUrl))
+                                    {
+                                        <img src="@product.ImageUrl" alt="@product.Name" loading="lazy" onerror="this.onerror=null;this.src='/images/placeholder.png';" />
+                                    }
+                                    else
+                                    {
+                                        <div class="text-muted d-flex flex-column align-items-center">
+                                            <i class="bi bi-image fs-1 text-secondary"></i>
+                                            <span class="small">No image</span>
+                                        </div>
+                                    }
+                                </a>
+
+                                <!-- Card Body -->
+                                <div class="p-3 d-flex flex-column flex-grow-1">
+                                    <div class="d-flex justify-content-between align-items-center mb-2">
+                                        <span class="badge-vendor">
+                                            <i class="bi bi-shop text-primary"></i>
+                                            @product.SellerShopName
+                                        </span>
+                                        <span class="badge bg-light text-secondary border small">
+                                            @product.CategoryName
+                                        </span>
+                                    </div>
+
+                                    <a href="/product/@product.Id" class="product-title mb-2">
+                                        @product.Name
+                                    </a>
+
+                                    <!-- Rating -->
+                                    <div class="d-flex align-items-center gap-1 mb-2">
+                                        <div class="rating-stars">
+                                            @for (int i = 1; i <= 5; i++)
+                                            {
+                                                if (i <= Math.Round(product.AverageRating))
+                                                {
+                                                    <i class="bi bi-star-fill"></i>
+                                                }
+                                                else
+                                                {
+                                                    <i class="bi bi-star text-black-50"></i>
+                                                }
+                                            }
+                                        </div>
+                                        <span class="small text-muted">(@product.ReviewCount)</span>
+                                    </div>
+
+                                    <!-- Price and Stock -->
+                                    <div class="mt-auto pt-2 border-top">
+                                        <div class="d-flex justify-content-between align-items-baseline mb-3">
+                                            <div class="price-tag">
+                                                ₹@product.Price.ToString("N2")
+                                            </div>
+                                            @if (product.StockQuantity > 10)
+                                            {
+                                                <span class="badge bg-success-subtle text-success small"><i class="bi bi-check-circle me-1"></i>In Stock</span>
+                                            }
+                                            else if (product.StockQuantity > 0)
+                                            {
+                                                <span class="badge bg-warning-subtle text-warning small"><i class="bi bi-clock me-1"></i>Only @product.StockQuantity left</span>
+                                            }
+                                            else
+                                            {
+                                                <span class="badge bg-danger-subtle text-danger small"><i class="bi bi-x-circle me-1"></i>Out of Stock</span>
+                                            }
+                                        </div>
+
+                                        <!-- Quick Action -->
+                                        @if (product.StockQuantity > 0)
+                                        {
+                                            <form action="/cart/add" method="post" class="m-0">
+                                                @Html.AntiForgeryToken()
+                                                <input type="hidden" name="productId" value="@product.Id" />
+                                                <input type="hidden" name="quantity" value="1" />
+                                                <button type="submit" class="btn btn-primary-custom w-100 btn-sm">
+                                                    <i class="bi bi-cart-plus me-1"></i>Add to Cart
+                                                </button>
+                                            </form>
+                                        }
+                                        else
+                                        {
+                                            <button class="btn btn-secondary w-100 btn-sm" disabled>
+                                                Sold Out
+                                            </button>
+                                        }
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    }
+                </div>
+
+                <!-- Pagination -->
+                @if (Model.TotalPages > 1)
+                {
+                    <div class="d-flex justify-content-center mt-5">
+                        <nav aria-label="Product navigation">
+                            <ul class="pagination pagination-md shadow-sm">
+                                <li class="page-item @(Model.HasPreviousPage ? "" : "disabled")">
+                                    <a class="page-link" href="?page=@(Model.Page - 1)&categoryId=@q.CategoryId&search=@q.Search&sort=@q.Sort&minPrice=@q.MinPrice&maxPrice=@q.MaxPrice">Previous</a>
+                                </li>
+                                @for (int p = 1; p <= Model.TotalPages; p++)
+                                {
+                                    <li class="page-item @(p == Model.Page ? "active" : "")">
+                                        <a class="page-link" href="?page=@p&categoryId=@q.CategoryId&search=@q.Search&sort=@q.Sort&minPrice=@q.MinPrice&maxPrice=@q.MaxPrice">@p</a>
+                                    </li>
+                                }
+                                <li class="page-item @(Model.HasNextPage ? "" : "disabled")">
+                                    <a class="page-link" href="?page=@(Model.Page + 1)&categoryId=@q.CategoryId&search=@q.Search&sort=@q.Sort&minPrice=@q.MinPrice&maxPrice=@q.MaxPrice">Next</a>
+                                </li>
+                            </ul>
+                        </nav>
+                    </div>
+                }
+            }
+        </div>
+    </div>
 </div>
