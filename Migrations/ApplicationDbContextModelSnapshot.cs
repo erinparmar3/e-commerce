@@ -543,7 +543,7 @@ namespace ECommerceApp.Migrations
                     b.HasOne("ECommerceApp.Models.Product", "Product")
                         .WithMany("CartItems")
                         .HasForeignKey("ProductId")
-                        .OnDelete(DeleteBehavior.Restrict)
+                        .OnDelete(DeleteBehavior.Cascade)
                         .IsRequired();
 
                     b.Navigation("Cart");

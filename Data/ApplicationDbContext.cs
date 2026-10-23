@@ -107,7 +107,7 @@ public class ApplicationDbContext : DbContext
             entity.HasOne(ci => ci.Product)
                 .WithMany(p => p.CartItems)
                 .HasForeignKey(ci => ci.ProductId)
-                .OnDelete(DeleteBehavior.Restrict);
+                .OnDelete(DeleteBehavior.Cascade);
 
             entity.HasIndex(ci => new { ci.CartId, ci.ProductId }).IsUnique();
         });
