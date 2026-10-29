@@ -165,7 +165,3 @@ dotnet run --urls "http://localhost:5005;http://localhost:5000"
 | **Admin** | `PUT` | `/api/admin/sellers/{id}/approve` | Approve merchant shop application | Admin |
 
 ---
-
-## 📄 License
-
-This project is developed for educational and portfolio demonstration purposes. All rights reserved.
